@@ -13,6 +13,7 @@ import com.example.todo_app.R;
 
 
 import Todo_list.MainList;
+import authentication.LoginScreen;
 
 public class NavigationActivity extends AppCompatActivity {
 
@@ -68,14 +69,14 @@ public class NavigationActivity extends AppCompatActivity {
             if (slideViewPager.getCurrentItem() < 2) {
                 slideViewPager.setCurrentItem(slideViewPager.getCurrentItem() + 1, true);
             } else {
-                startActivity(new Intent(NavigationActivity.this, MainList.class));
+                startActivity(new Intent(NavigationActivity.this, LoginScreen.class));
                 finish();
             }
         });
 
         // Sự kiện nút Skip
         skipButton.setOnClickListener(v -> {
-            startActivity(new Intent(NavigationActivity.this, MainList.class));
+            startActivity(new Intent(NavigationActivity.this, LoginScreen.class));
             finish();
         });
 
