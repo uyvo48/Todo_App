@@ -1,65 +1,71 @@
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/Home"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.example.todolist.Home">
+    tools:context="Todo_list.HomeFragment">
 
     <LinearLayout
-        android:id="@+id/mainLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@+id/bottomNavigation"
         android:orientation="vertical"
-        android:padding="20dp"
-        android:paddingTop="80dp">
+        android:padding="20dp">
 
-        <TextView
+        <LinearLayout
+            android:id="@+id/header_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Today"
-            android:textColor="@android:color/black"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            android:orientation="horizontal">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Best platform for creating to-do lists"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/taskRecyclerView"
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Today"
+                    android:textColor="@color/primary"
+                    android:textSize="24dp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/textView10"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Best platform for creating to-do list"
+                    android:textColor="@color/secondary" />
+
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnSearch_home"
+                android:layout_width="24dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/circle_background"
+                android:src="@drawable/ic_search" />
+
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btnAdd_home"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="right"
+            android:background="@drawable/circle_background"
+            android:elevation="4dp"
+            android:src="@drawable/ic_add" />
+
+        <ListView
+            android:id="@+id/list_item_task"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_marginTop="16dp" />
+            android:layout_height="480dp"
+            tools:listitem="@layout/list_item_home" />
+
     </LinearLayout>
 
-    <!-- Floating Action Button -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabAddTask"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
-        android:layout_margin="16dp"
-        android:layout_marginBottom="70dp"
-        android:src="@android:drawable/ic_input_add"
-        android:tint="@android:color/white"
-        android:backgroundTint="@android:color/holo_green_dark" />
-
-    <!-- Bottom Navigation -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNavigation"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:background="?android:attr/windowBackground"
-
-        android:layout_marginBottom="0dp"
-        android:layout_marginStart="0dp"
-        android:layout_marginEnd="0dp"
-       />
-
-</RelativeLayout>
+</FrameLayout>
