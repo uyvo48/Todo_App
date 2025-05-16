@@ -37,6 +37,7 @@ public class HomeFragment extends Fragment {
 
     private CollectionReference tasksRef;
     private FirebaseAuth mAuth;
+    private String userId;
 
     public HomeFragment() {
     }
@@ -64,10 +65,11 @@ public class HomeFragment extends Fragment {
             return;
         }
 
+        userId = currentUser.getUid();
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        tasksRef = db.collection("users").document(currentUser.getUid()).collection("tasks");
+        tasksRef = db.collection("users").document(userId).collection("tasks");
 
-        adapter = new HomeTaskAdapter(requireContext(), taskList, this::openTaskFragment);
+        adapter = new HomeTaskAdapter(requireContext(), taskList, this::openTaskFragment, userId);
         loadTasksFromFirestore();
     }
 

@@ -1,6 +1,7 @@
 package Todo_list;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -12,6 +13,7 @@ import com.example.todo_app.databinding.ActivityMainTodoListBinding;
 
 public class MainTodoList extends AppCompatActivity {
     ActivityMainTodoListBinding binding;
+    private Fragment currentFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -20,23 +22,37 @@ public class MainTodoList extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         // Hiển thị HomeFragment mặc định
-        replaceFragment(new HomeFragment());
+        if (savedInstanceState == null) {
+            currentFragment = new HomeFragment();
+            replaceFragment(currentFragment);
+            binding.bottomNavigationView.setSelectedItemId(R.id.Home);
+        }
 
         // Truy cập bottomNavigationView
         binding.bottomNavigationView.setOnNavigationItemSelectedListener((MenuItem item) -> {
             int itemId = item.getItemId();
-            if (R.id.Home == itemId) {
-                replaceFragment(new HomeFragment());
-                return true;
+            Fragment selectedFragment = null;
+
+            if (itemId == R.id.Home) {
+                selectedFragment = new HomeFragment();
             } else if (itemId == R.id.Task) {
-                replaceFragment(new TaskFragment());
-                return true;
+                selectedFragment = new TaskFragment();
             } else if (itemId == R.id.Account) {
-                replaceFragment(new AccountFragment());
+                selectedFragment = new AccountFragment();
+            }
+
+            if (selectedFragment != null && (currentFragment == null || !selectedFragment.getClass().equals(currentFragment.getClass()))) {
+                currentFragment = selectedFragment;
+                replaceFragment(currentFragment);
                 return true;
             }
             return false;
         });
+    }
+
+    public void updateNavigationSelection(int itemId) {
+        binding.bottomNavigationView.setSelectedItemId(itemId);
+        Log.d("MainTodoList", "Updated navigation selection to item: " + itemId);
     }
 
     private void replaceFragment(Fragment fragment) {
@@ -44,6 +60,18 @@ public class MainTodoList extends AppCompatActivity {
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
         fragmentTransaction.replace(R.id.frameLayout, fragment);
         fragmentTransaction.commit();
+        Log.d("MainTodoList", "Replaced fragment: " + fragment.getClass().getSimpleName());
+    }
 
+    @Override
+    public void onBackPressed() {
+        Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.frameLayout);
+        if (currentFragment instanceof TaskFragment) {
+            Log.d("MainTodoList", "Handling back press in TaskFragment");
+            getSupportFragmentManager().popBackStack();
+            updateNavigationSelection(R.id.Home);
+        } else {
+            super.onBackPressed();
+        }
     }
 }
