@@ -43,11 +43,13 @@
             </LinearLayout>
 
             <ImageButton
-                android:id="@+id/btnSearch_home"
+
+                android:layout_gravity="center"
+                android:id="@+id/btnLogout"
                 android:layout_width="24dp"
-                android:layout_height="wrap_content"
+                android:layout_height="24dp"
                 android:background="@drawable/circle_background"
-                android:src="@drawable/ic_search" />
+                android:src="@drawable/ic_logout" />
 
         </LinearLayout>
 

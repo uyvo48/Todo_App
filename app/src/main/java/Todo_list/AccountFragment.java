@@ -11,6 +11,8 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -51,6 +53,8 @@ public class AccountFragment extends Fragment {
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
     private static final String TAG = "AccountFragment";
+    private static final int MAX_AUTH_RETRIES = 3;
+    private int authRetryCount = 0;
 
     private String mParam1;
     private String mParam2;
@@ -100,21 +104,43 @@ public class AccountFragment extends Fragment {
         taskList = new ArrayList<>();
         adapter = new CalendarTaskAdapter(requireContext(), taskList, this::deleteTask);
         selectedDate = System.currentTimeMillis();
-        signInAnonymously();
+        attemptAnonymousSignIn();
     }
 
-    private void signInAnonymously() {
+    private void attemptAnonymousSignIn() {
+        if (!isNetworkAvailable()) {
+            Toast.makeText(requireContext(), "Không có kết nối mạng, hiển thị tasks cục bộ", Toast.LENGTH_SHORT).show();
+            Log.w(TAG, "No network connection, skipping anonymous auth");
+            filterTasksByDate();
+            return;
+        }
+
+        if (authRetryCount >= MAX_AUTH_RETRIES) {
+            Toast.makeText(requireContext(), "Không thể xác thực sau " + MAX_AUTH_RETRIES + " lần thử, vui lòng kiểm tra cấu hình", Toast.LENGTH_LONG).show();
+            Log.e(TAG, "Max auth retries reached: " + MAX_AUTH_RETRIES);
+            filterTasksByDate();
+            return;
+        }
+
+        authRetryCount++;
+        Log.d(TAG, "Attempting anonymous auth, attempt: " + authRetryCount);
         mAuth.signInAnonymously()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         Log.d(TAG, "Anonymous auth success");
+                        authRetryCount = 0; // Reset retry count
                         loadTasksFromFirestore();
+                    } else {
+                        String errorMsg = task.getException() != null ? task.getException().getMessage() : "Unknown error";
+                        Log.e(TAG, "Anonymous auth failed: " + errorMsg + ", retry count: " + authRetryCount);
+                        if (errorMsg.contains("network") && authRetryCount < MAX_AUTH_RETRIES) {
+                            // Retry after a delay if network-related error
+                            new Handler(Looper.getMainLooper()).postDelayed(this::attemptAnonymousSignIn, 2000);
+                        } else {
+                            Toast.makeText(requireContext(), "Lỗi xác thực: " + errorMsg, Toast.LENGTH_SHORT).show();
+                            filterTasksByDate();
+                        }
                     }
-//                    else {
-//                        String errorMsg = task.getException() != null ? task.getException().getMessage() : "Unknown error";
-//                        Toast.makeText(requireContext(), "Lỗi xác thực: " + errorMsg, Toast.LENGTH_SHORT).show();
-//                        Log.e(TAG, "Anonymous auth failed: " + errorMsg);
-//                    }
                 });
     }
 
@@ -189,10 +215,14 @@ public class AccountFragment extends Fragment {
     public void onResume() {
         super.onResume();
         FirebaseUser user = mAuth.getCurrentUser();
-        if (user != null) {
+        if (user != null && isNetworkAvailable()) {
             loadTasksFromFirestore();
+        } else if (!isNetworkAvailable()) {
+            Toast.makeText(requireContext(), "Không có kết nối mạng, hiển thị tasks cục bộ", Toast.LENGTH_SHORT).show();
+            Log.w(TAG, "No network connection in onResume");
+            filterTasksByDate();
         } else {
-            signInAnonymously();
+            attemptAnonymousSignIn();
         }
         Log.d(TAG, "onResume: Loaded tasks, size: " + taskList.size());
     }
@@ -258,9 +288,19 @@ public class AccountFragment extends Fragment {
                 int hour = timePicker.getHour();
                 int minute = timePicker.getMinute();
                 String time = String.format(Locale.getDefault(), "%02d:%02d", hour, minute);
-                task.setTime(time);
+                Log.d(TAG, "Selected time: " + time + " for task: " + task.getTitle() + ", id: " + task.getId());
 
+                if (task.getTitle() == null || task.getId() == null) {
+                    Toast.makeText(requireContext(), "Lỗi: Task không hợp lệ", Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "Invalid task: title=" + task.getTitle() + ", id=" + task.getId());
+                    dialog.dismiss();
+                    return;
+                }
+
+                task.setTime(time);
                 taskList.set(finalPosition, task);
+                Log.d(TAG, "Updated taskList at position: " + finalPosition + ", time: " + task.getTime());
+                filterTasksByDate();
                 saveTaskToFirestore(task);
                 setAlarm(task);
                 Toast.makeText(requireContext(), "Giờ đã được cập nhật", Toast.LENGTH_SHORT).show();
@@ -285,9 +325,9 @@ public class AccountFragment extends Fragment {
                 return;
             }
 
-            if (task.getId() == null) {
+            if (task.getId() == null || task.getTitle() == null) {
                 Toast.makeText(requireContext(), "Lỗi: Task không hợp lệ", Toast.LENGTH_SHORT).show();
-                Log.e(TAG, "Task ID is null");
+                Log.e(TAG, "Invalid task: id=" + task.getId() + ", title=" + task.getTitle());
                 return;
             }
 
@@ -305,6 +345,7 @@ public class AccountFragment extends Fragment {
             if (alarmTime <= System.currentTimeMillis()) {
                 calendar.add(Calendar.DAY_OF_MONTH, 1);
                 alarmTime = calendar.getTimeInMillis();
+                Log.d(TAG, "Alarm time was in the past, rescheduled to next day: " + new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(alarmTime));
             }
 
             AlarmManager alarmManager = (AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
@@ -318,6 +359,8 @@ public class AccountFragment extends Fragment {
             Intent intent = new Intent(requireContext(), AlarmReceiver.class);
             intent.putExtra("title", task.getTitle());
             intent.putExtra("taskId", task.getId());
+            Log.d(TAG, "Creating PendingIntent for task: " + task.getTitle() + ", taskId: " + task.getId());
+
             PendingIntent pendingIntent = PendingIntent.getBroadcast(
                     requireContext(),
                     task.getId().hashCode(),
@@ -352,7 +395,7 @@ public class AccountFragment extends Fragment {
         if (user == null) {
             Toast.makeText(requireContext(), "Chưa đăng nhập, thử lại", Toast.LENGTH_SHORT).show();
             Log.e(TAG, "No authenticated user for deleteTask");
-            signInAnonymously();
+            attemptAnonymousSignIn();
             return;
         }
 
@@ -387,6 +430,7 @@ public class AccountFragment extends Fragment {
                     taskCal.get(Calendar.MONTH) == selectedCal.get(Calendar.MONTH) &&
                     taskCal.get(Calendar.DAY_OF_MONTH) == selectedCal.get(Calendar.DAY_OF_MONTH)) {
                 filteredList.add(task);
+                Log.d(TAG, "Filtered task: " + task.getTitle() + ", time: " + task.getTime());
             }
         }
         adapter.updateList(filteredList);
@@ -419,7 +463,7 @@ public class AccountFragment extends Fragment {
         if (user == null) {
             Toast.makeText(requireContext(), "Chưa đăng nhập, thử lại", Toast.LENGTH_SHORT).show();
             Log.e(TAG, "No authenticated user");
-            signInAnonymously();
+            attemptAnonymousSignIn();
             return;
         }
 
@@ -429,17 +473,13 @@ public class AccountFragment extends Fragment {
         taskMap.put("date", task.getDate());
         taskMap.put("time", task.getTime());
 
-        Log.d(TAG, "Attempting to save task to Firestore: " + task.getTitle() + ", id: " + task.getId());
+        Log.d(TAG, "Attempting to save task to Firestore: " + task.getTitle() + ", id: " + task.getId() + ", time: " + task.getTime());
 
         db.collection("users").document(user.getUid()).collection("calendartask").document(task.getId())
                 .set(taskMap)
                 .addOnSuccessListener(aVoid -> {
-                    if (!taskList.contains(task)) {
-                        taskList.add(task);
-                    }
-                    filterTasksByDate();
-                    Toast.makeText(requireContext(), "Task đã được lưu", Toast.LENGTH_SHORT).show();
                     Log.d(TAG, "Task saved to Firestore: " + task.getTitle() + ", id: " + task.getId());
+                    Toast.makeText(requireContext(), "Task đã được lưu", Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e -> {
                     String errorMsg = e.getMessage() != null ? e.getMessage() : "Unknown error";
@@ -464,63 +504,59 @@ public class AccountFragment extends Fragment {
         if (user == null) {
             Toast.makeText(requireContext(), "Chưa đăng nhập, thử lại", Toast.LENGTH_SHORT).show();
             Log.e(TAG, "No authenticated user for loadTasks");
-            signInAnonymously();
+            attemptAnonymousSignIn();
             return;
         }
 
         db.collection("users").document(user.getUid()).collection("calendartask")
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        taskList.clear();
-                        try {
-                            if (task.getResult().isEmpty()) {
-                                Log.d(TAG, "No tasks found in Firestore collection: users/" + user.getUid() + "/calendartask");
-                                filterTasksByDate();
-                                return;
-                            }
-                            for (QueryDocumentSnapshot document : task.getResult()) {
-                                try {
-                                    String id = document.getString("id");
-                                    String title = document.getString("title");
-                                    Long date = document.getLong("date");
-                                    String time = document.getString("time");
-
-                                    if (id == null || title == null || date == null) {
-                                        Log.w(TAG, "Invalid task document: " + document.getId() + ", id=" + id + ", title=" + title + ", date=" + date);
-                                        continue;
-                                    }
-
-                                    CalendarTaskModel calendarTask = new CalendarTaskModel();
-                                    calendarTask.setId(id);
-                                    calendarTask.setTitle(title);
-                                    calendarTask.setDate(date);
-                                    calendarTask.setTime(time);
-                                    taskList.add(calendarTask);
-                                    Log.d(TAG, "Loaded task: " + title + ", id: " + id);
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Error parsing task document: " + document.getId(), e);
-                                }
-                            }
-                            Log.d(TAG, "Loaded tasks from Firestore: " + taskList.size());
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error processing Firestore result", e);
-                            Toast.makeText(requireContext(), "Lỗi khi xử lý dữ liệu tasks", Toast.LENGTH_SHORT).show();
-                        }
+                .addSnapshotListener((snapshots, e) -> {
+                    if (e != null) {
+                        Toast.makeText(requireContext(), "Lỗi khi tải tasks: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, "Error loading tasks: ", e);
                         filterTasksByDate();
-                    } else {
-                        Exception e = task.getException();
-                        String errorMsg = e != null ? e.getMessage() : "Unknown error";
-                        Toast.makeText(requireContext(), "Lỗi khi tải tasks: " + errorMsg, Toast.LENGTH_SHORT).show();
-                        Log.e(TAG, "Error loading tasks from Firestore: " + errorMsg, e);
-                        filterTasksByDate();
+                        return;
                     }
+
+                    taskList.clear();
+                    if (snapshots.isEmpty()) {
+                        Log.d(TAG, "No tasks found in Firestore");
+                        filterTasksByDate();
+                        return;
+                    }
+
+                    for (QueryDocumentSnapshot document : snapshots) {
+                        try {
+                            String id = document.getString("id");
+                            String title = document.getString("title");
+                            Long date = document.getLong("date");
+                            String time = document.getString("time");
+
+                            if (id == null || title == null || date == null) {
+                                Log.w(TAG, "Invalid task document: " + document.getId() + ", id=" + id + ", title=" + title + ", date=" + date);
+                                continue;
+                            }
+
+                            CalendarTaskModel calendarTask = new CalendarTaskModel();
+                            calendarTask.setId(id);
+                            calendarTask.setTitle(title);
+                            calendarTask.setDate(date);
+                            calendarTask.setTime(time);
+                            taskList.add(calendarTask);
+                            Log.d(TAG, "Loaded task: " + title + ", id: " + id + ", time: " + time);
+                        } catch (Exception ex) {
+                            Log.e(TAG, "Error parsing task document: " + document.getId(), ex);
+                        }
+                    }
+                    Log.d(TAG, "Loaded tasks from Firestore: " + taskList.size());
+                    filterTasksByDate();
                 });
     }
 
     private boolean isNetworkAvailable() {
         ConnectivityManager connectivityManager = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
-        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+        boolean isConnected = activeNetworkInfo != null && activeNetworkInfo.isConnected();
+        Log.d(TAG, "Network available: " + isConnected);
+        return isConnected;
     }
 }

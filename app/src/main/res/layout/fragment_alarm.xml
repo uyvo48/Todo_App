@@ -52,7 +52,7 @@
         <ListView
             android:id="@+id/list_view_calendar"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
+            android:layout_height="198dp"
 
             android:clickable="true"
             android:enabled="true"
