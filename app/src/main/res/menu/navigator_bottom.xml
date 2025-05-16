@@ -6,10 +6,10 @@
         android:icon="@drawable/ic_home" />
     <item
         android:id="@+id/Task"
-        android:title="task"
+        android:title="Task"
         android:icon="@drawable/ic_task" />
     <item
-        android:id="@+id/Account"
-        android:title="Account"
+        android:id="@+id/Alarm"
+        android:title="Alarm"
         android:icon="@drawable/ic_account" />
 </menu>

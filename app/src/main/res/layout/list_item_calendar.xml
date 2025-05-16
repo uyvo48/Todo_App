@@ -1,41 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingTop="20dp"
-    app:cardElevation="8dp">
-
+    android:layout_margin="8dp"
+    android:descendantFocusability="blocksDescendants">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:paddingTop="12dp">
+        android:elevation="20dp"
+        android:orientation="horizontal" android:paddingTop="10dp">
+
+        <View
+            android:background="@drawable/boder_background"
+            android:layout_width="10dp"
+            android:layout_height="85dp" />
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@drawable/border_inputtextfield"
-            android:orientation="horizontal">
-
-            <View
-                android:id="@+id/textView11"
-                android:layout_width="012dp"
-                android:layout_height="40dp"
-
-                android:background="@drawable/border_item_calendar"
-                android:padding="8dp" />
+            android:layout_width="380dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
 
             <TextView
-                android:id="@+id/textView15"
-                android:layout_width="wrap_content"
+                android:id="@+id/tvTitle"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:text="TextView" />
+                android:text="Title"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/tvDate"
+                android:textSize="12dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Date" />
+
+            <TextView
+                android:id="@+id/tvTime"
+                android:textSize="12dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Chưa cài đặt giờ" />
 
         </LinearLayout>
-    </LinearLayout>
 
+        <ImageButton
+            android:background="@drawable/circle_background"
+            android:layout_gravity="center"
+            android:id="@+id/btnDeleteTaskCalendar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_delete" />
+    </LinearLayout>
 
 </androidx.cardview.widget.CardView>

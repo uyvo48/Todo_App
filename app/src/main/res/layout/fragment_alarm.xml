@@ -1,13 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/Account"
+    android:id="@+id/Alarm"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/secondary"
     tools:context="Todo_list.AccountFragment">
-
-    <!-- TODO: Update blank fragment layout -->
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,14 +20,12 @@
             android:orientation="horizontal">
 
             <ImageButton
-                android:layout_gravity="center"
                 android:id="@+id/btnBack"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
+                android:layout_gravity="center"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/icon_back"
-
-                />
+                android:src="@drawable/icon_back" />
 
             <TextView
                 android:id="@+id/textView13"
@@ -37,7 +34,7 @@
                 android:layout_gravity="center"
                 android:gravity="center"
                 android:text="Calendar"
-                android:textSize="20dp"
+                android:textSize="20sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -53,17 +50,20 @@
             android:layout_height="8dp" />
 
         <ListView
+            android:id="@+id/list_view_calendar"
             android:layout_width="match_parent"
-            android:layout_height="161dp"
-            tools:listitem="@layout/list_item_calendar"/>
+            android:layout_height="200dp"
+
+            android:clickable="true"
+            android:enabled="true"
+            android:longClickable="true"
+            tools:listitem="@layout/list_item_calendar" />
 
         <ImageButton
-
             android:id="@+id/imageButton5"
             android:layout_width="54dp"
             android:layout_height="54dp"
             android:layout_gravity="right"
             android:src="@drawable/ic_add" />
     </LinearLayout>
-
 </FrameLayout>

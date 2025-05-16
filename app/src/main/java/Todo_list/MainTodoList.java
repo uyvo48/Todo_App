@@ -37,7 +37,7 @@ public class MainTodoList extends AppCompatActivity {
                 selectedFragment = new HomeFragment();
             } else if (itemId == R.id.Task) {
                 selectedFragment = new TaskFragment();
-            } else if (itemId == R.id.Account) {
+            } else if (itemId == R.id.Alarm) {
                 selectedFragment = new AccountFragment();
             }
 

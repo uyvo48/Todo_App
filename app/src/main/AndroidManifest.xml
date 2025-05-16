@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="com.google.android.gms.version" />
+
     <application
-
-
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -14,7 +16,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Todo_App"
-
         tools:targetApi="34">
 
         <activity
@@ -28,23 +29,25 @@
             android:exported="false" />
         <activity
             android:name="authentication.LoginScreen"
-            android:exported="false" /> <!-- <activity -->
-        <!-- android:name="Todo_list.F" -->
-        <!-- android:exported="false" /> &lt;!&ndash; MainActivity: Chạy đầu tiên (màn hình chào mừng) &ndash;&gt; -->
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity> <!-- getStarted Activity -->
+        </activity>
         <activity
             android:name="onboarding_screen.getStarted"
-            android:exported="false" /> <!-- NavigationActivity -->
+            android:exported="false" />
         <activity
             android:name="onboarding_screen.NavigationActivity"
             android:exported="false" />
+
+        <receiver
+            android:name="Todo_list.AlarmReceiver"
+            android:exported="false" />
+
     </application>
 </manifest>
