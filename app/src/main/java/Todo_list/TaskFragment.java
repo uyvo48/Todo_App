@@ -41,6 +41,7 @@ public class TaskFragment extends Fragment {
     private static final String KEY_CURRENT_TITLE = "current_title";
     private static final String KEY_TASK_ID = "task_id";
     private static final String KEY_SUBTASKS_REF_PATH = "subtasks_ref_path";
+    private static final int REQUEST_GOOGLE_PLAY_SERVICES = 1000;
 
     private String taskId;
     private String currentTitle;
@@ -80,11 +81,18 @@ public class TaskFragment extends Fragment {
             Log.w("TaskFragment", "Arguments are null, checking lifecycle");
         }
 
-        int resultCode = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(requireContext());
+        GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
+        int resultCode = googleApiAvailability.isGooglePlayServicesAvailable(requireContext());
         if (resultCode != ConnectionResult.SUCCESS) {
             Log.e("TaskFragment", "Google Play Services error: " + resultCode);
             if (isAdded()) {
-                GoogleApiAvailability.getInstance().getErrorDialog(requireActivity(), resultCode, 0).show();
+                if (googleApiAvailability.isUserResolvableError(resultCode)) {
+                    googleApiAvailability.getErrorDialog(requireActivity(), resultCode, REQUEST_GOOGLE_PLAY_SERVICES).show();
+                } else {
+                    Toast.makeText(requireContext(), "This device does not support Google Play Services", Toast.LENGTH_LONG).show();
+                    startActivity(new Intent(requireContext(), LoginScreen.class));
+                    requireActivity().finish();
+                }
             }
             return;
         }
@@ -93,6 +101,7 @@ public class TaskFragment extends Fragment {
         mAuth = FirebaseAuth.getInstance();
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
+            Log.e("TaskFragment", "No authenticated user found, redirecting to LoginScreen");
             startActivity(new Intent(requireContext(), LoginScreen.class));
             requireActivity().finish();
             return;
@@ -150,7 +159,9 @@ public class TaskFragment extends Fragment {
             return view;
         }
 
+        adapter = new TaskAdapter(requireContext(), subTaskList, currentTitle, subTasksRef);
         listView.setAdapter(adapter);
+        Log.d("TaskFragment", "Adapter initialized and set to ListView");
 
         if (!TextUtils.isEmpty(currentTitle)) {
             taskMainTitle.setText(currentTitle);
@@ -162,11 +173,11 @@ public class TaskFragment extends Fragment {
             Log.d("TaskFragment", "currentTitle is empty in onCreateView");
         }
 
-        if (subTasksRef != null) {
+        if (subTasksRef != null && !TextUtils.isEmpty(taskId)) {
+            Log.d("TaskFragment", "Loading sub-tasks for taskId: " + taskId);
             loadSubTasksFromFirestore();
-            Log.d("TaskFragment", "Loading sub-tasks from Firestore for taskId: " + taskId);
         } else {
-            Log.d("TaskFragment", "subTasksRef is null, this is a new task");
+            Log.d("TaskFragment", "subTasksRef or taskId is null/empty, skipping sub-task load");
         }
 
         addButton.setOnClickListener(v -> {
@@ -222,7 +233,20 @@ public class TaskFragment extends Fragment {
 
         ImageButton backButton = view.findViewById(R.id.btnBack);
         if (backButton != null) {
-            backButton.setOnClickListener(v -> requireActivity().getSupportFragmentManager().popBackStack());
+            backButton.setOnClickListener(v -> {
+                // Thay thế fragment hiện tại bằng HomeFragment
+                requireActivity().getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.frameLayout, new HomeFragment())
+                        .commit();
+                // Xóa toàn bộ back stack để đảm bảo trạng thái sạch
+                requireActivity().getSupportFragmentManager().popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE);
+                // Cập nhật BottomNavigationView để chọn mục "Home"
+                if (requireActivity() instanceof MainTodoList) {
+                    ((MainTodoList) requireActivity()).updateNavigationSelection(R.id.Home);
+                }
+                Log.d("TaskFragment", "Back button pressed, navigated to HomeFragment");
+            });
         } else {
             Log.e("TaskFragment", "BackButton not found");
         }
@@ -266,7 +290,6 @@ public class TaskFragment extends Fragment {
             }
         }
         Toast.makeText(requireContext(), "Tasks saved", Toast.LENGTH_SHORT).show();
-        // Thêm reload HomeFragment sau khi lưu thành công
         requireActivity().getSupportFragmentManager().popBackStack();
         requireActivity().getSupportFragmentManager()
                 .beginTransaction()
@@ -275,69 +298,105 @@ public class TaskFragment extends Fragment {
     }
 
     private void loadSubTasksFromFirestore() {
-        if (subTasksRef == null) {
-            Log.d("TaskFragment", "subTasksRef is null, skipping load");
+        if (subTasksRef == null || TextUtils.isEmpty(taskId)) {
+            Log.e("TaskFragment", "subTasksRef or taskId is null/empty, cannot load sub-tasks. taskId: " + taskId);
+            if (isAdded()) {
+                requireActivity().runOnUiThread(() ->
+                        Toast.makeText(requireContext(), "Cannot load sub-tasks: Invalid task ID", Toast.LENGTH_SHORT).show()
+                );
+            }
             return;
         }
 
         tasksRef.document(taskId).get().addOnSuccessListener(documentSnapshot -> {
             if (!documentSnapshot.exists()) {
                 Log.e("TaskFragment", "Task does not exist in Firestore: " + taskId);
-                Toast.makeText(requireContext(), "Task does not exist", Toast.LENGTH_SHORT).show();
+                if (isAdded()) {
+                    requireActivity().runOnUiThread(() ->
+                            Toast.makeText(requireContext(), "Task does not exist", Toast.LENGTH_SHORT).show()
+                    );
+                }
                 return;
             }
 
             if (TextUtils.isEmpty(currentTitle)) {
                 currentTitle = documentSnapshot.getString("title");
-                if (!TextUtils.isEmpty(currentTitle)) {
-                    TextView taskMainTitle = getView().findViewById(R.id.task_main_title);
-                    TextInputEditText taskInputTitle = getView().findViewById(R.id.textFieldTitle);
-                    if (taskMainTitle != null && taskInputTitle != null && isAdded()) {
-                        taskMainTitle.setText(currentTitle);
-                        taskMainTitle.setVisibility(View.VISIBLE);
-                        taskInputTitle.setText(currentTitle);
-                        Log.d("TaskFragment", "Retrieved title from Firestore: " + currentTitle);
-                    }
+                if (!TextUtils.isEmpty(currentTitle) && isAdded()) {
+                    requireActivity().runOnUiThread(() -> {
+                        TextView taskMainTitle = getView().findViewById(R.id.task_main_title);
+                        TextInputEditText taskInputTitle = getView().findViewById(R.id.textFieldTitle);
+                        if (taskMainTitle != null && taskInputTitle != null) {
+                            taskMainTitle.setText(currentTitle);
+                            taskMainTitle.setVisibility(View.VISIBLE);
+                            taskInputTitle.setText(currentTitle);
+                            Log.d("TaskFragment", "Updated title from Firestore: " + currentTitle);
+                        }
+                    });
                 }
             }
 
             subTasksRef.get().addOnSuccessListener(querySnapshot -> {
-                if (isAdded()) {
-                    requireActivity().runOnUiThread(() -> {
-                        subTaskList.clear();
-                        if (querySnapshot.isEmpty()) {
-                            Log.d("TaskFragment", "No subtask in Firestore for taskId: " + taskId);
-                            Toast.makeText(requireContext(), "No subtask to display", Toast.LENGTH_SHORT).show();
-                        } else {
-                            for (QueryDocumentSnapshot document : querySnapshot) {
-                                SubTaskModel subTask = document.toObject(SubTaskModel.class);
-                                subTask.setId(document.getId());
-                                subTaskList.add(subTask);
-                                Log.d("TaskFragment", "Loaded sub-task: id=" + subTask.getId() + ", content=" + subTask.getContent());
-                            }
-                        }
-                        if (adapter != null) {
-                            adapter.notifyDataSetChanged();
-                            if (listView != null) {
-                                listView.invalidateViews();
-                            }
-                            Log.d("TaskFragment", "Sub-tasks loaded: " + subTaskList.size());
-                        } else {
-                            Log.e("TaskFragment", "Adapter is null when loading sub-tasks");
-                        }
-                    });
+                if (!isAdded()) {
+                    Log.w("TaskFragment", "Fragment not attached, skipping UI update");
+                    return;
                 }
+                requireActivity().runOnUiThread(() -> {
+                    subTaskList.clear();
+                    Log.d("TaskFragment", "Cleared subTaskList, loading new data for taskId: " + taskId);
+                    if (querySnapshot.isEmpty()) {
+                        Log.d("TaskFragment", "No sub-tasks found in Firestore for taskId: " + taskId);
+                        Toast.makeText(requireContext(), "No sub-tasks to display", Toast.LENGTH_SHORT).show();
+                    } else {
+                        for (QueryDocumentSnapshot document : querySnapshot) {
+                            SubTaskModel subTask = document.toObject(SubTaskModel.class);
+                            subTask.setId(document.getId());
+                            subTaskList.add(subTask);
+                            Log.d("TaskFragment", "Loaded sub-task: id=" + subTask.getId() + ", content=" + subTask.getContent());
+                        }
+                    }
+                    if (adapter != null) {
+                        adapter.notifyDataSetChanged();
+                        if (listView != null) {
+                            listView.invalidateViews();
+                            Log.d("TaskFragment", "Adapter notified, subTaskList size: " + subTaskList.size());
+                        } else {
+                            Log.e("TaskFragment", "ListView is null when updating sub-tasks");
+                        }
+                    } else {
+                        Log.e("TaskFragment", "Adapter is null when updating sub-tasks");
+                    }
+                });
             }).addOnFailureListener(e -> {
                 if (isAdded()) {
                     requireActivity().runOnUiThread(() ->
                             Toast.makeText(requireContext(), "Failed to load sub-tasks: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                     );
                 }
-                Log.e("TaskFragment", "Failed to load sub-tasks: " + e.getMessage());
+                Log.e("TaskFragment", "Failed to load sub-tasks for taskId: " + taskId + ", error: " + e.getMessage());
             });
         }).addOnFailureListener(e -> {
-            Log.e("TaskFragment", "Failed to check task existence: " + e.getMessage());
-            Toast.makeText(requireContext(), "Failed to load task: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            if (isAdded()) {
+                requireActivity().runOnUiThread(() ->
+                        Toast.makeText(requireContext(), "Failed to load task: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
+            }
+            Log.e("TaskFragment", "Failed to check task existence for taskId: " + taskId + ", error: " + e.getMessage());
         });
     }
+
+//    @Override
+//    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+//        super.onActivityResult(requestCode, resultCode, data);
+//        if (requestCode == REQUEST_GOOGLE_PLAY_SERVICES) {
+//            if (resultCode == RESULT_OK) {
+//                Log.d("TaskFragment", "Google Play Services resolved, retrying initialization");
+//                requireActivity().recreate();
+//            } else {
+//                Log.e("TaskFragment", "User cancelled Google Play Services resolution");
+//                Toast.makeText(requireContext(), "Google Play Services is required for this app", Toast.LENGTH_LONG).show();
+//                startActivity(new Intent(requireContext(), LoginScreen.class));
+//                requireActivity().finish();
+//            }
+//        }
+//    }
 }
