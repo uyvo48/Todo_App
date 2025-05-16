@@ -200,12 +200,25 @@ public class AccountFragment extends Fragment {
             return true;
         });
 
-        backButton.setOnClickListener(v -> {
-            requireActivity().getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.frameLayout, new HomeFragment())
-                    .commit();
-        });
+
+        if (backButton != null) {
+            backButton.setOnClickListener(v -> {
+                // Thay thế fragment hiện tại bằng HomeFragment
+                requireActivity().getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.frameLayout, new HomeFragment())
+                        .commit();
+                // Xóa toàn bộ back stack để đảm bảo trạng thái sạch
+                requireActivity().getSupportFragmentManager().popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE);
+                // Cập nhật BottomNavigationView để chọn mục "Home"
+                if (requireActivity() instanceof MainTodoList) {
+                    ((MainTodoList) requireActivity()).updateNavigationSelection(R.id.Home);
+                }
+                Log.d("TaskFragment", "Back button pressed, navigated to HomeFragment");
+            });
+        } else {
+            Log.e("TaskFragment", "BackButton not found");
+        }
 
         filterTasksByDate();
         return view;

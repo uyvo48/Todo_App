@@ -79,8 +79,9 @@ public class HomeFragment extends Fragment {
 
         listView = view.findViewById(R.id.list_item_task);
         ImageButton addButton = view.findViewById(R.id.btnAdd_home);
+        ImageButton logoutButton = view.findViewById(R.id.btnLogout);
 
-        if (listView == null || addButton == null) {
+        if (listView == null || addButton == null || logoutButton == null) {
             Log.e("HomeFragment", "One or more views not found");
             return view;
         }
@@ -88,6 +89,16 @@ public class HomeFragment extends Fragment {
         listView.setAdapter(adapter);
 
         addButton.setOnClickListener(v -> openTaskFragment(null, null));
+
+        logoutButton.setOnClickListener(v -> {
+            mAuth.signOut();
+            Log.d("HomeFragment", "User signed out");
+            Toast.makeText(requireContext(), "Đã đăng xuất", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(requireContext(), LoginScreen.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            requireActivity().finish();
+        });
 
         return view;
     }
