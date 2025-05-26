@@ -60,7 +60,9 @@
             android:layout_gravity="right"
             android:background="@drawable/circle_background"
             android:elevation="4dp"
-            android:src="@drawable/ic_add" />
+            android:src="@drawable/circle_background"/>
+<!--            android:src="@drawable/ic_add"-->
+
 
         <ListView
             android:id="@+id/list_item_task"
