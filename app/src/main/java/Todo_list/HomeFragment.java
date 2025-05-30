@@ -107,7 +107,7 @@ public class HomeFragment extends Fragment {
             Intent intent = new Intent(requireContext(), LoginScreen.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK); // Xóa stack hoạt động
             startActivity(intent);
-            requireActivity().finish(); // Kết thúc Activity hiện tại
+//            requireActivity().finish(); // Kết thúc Activity hiện tại
         });
 
         return view;

@@ -47,7 +47,7 @@ import Adapter.CalendarTaskAdapter;
 import model.CalendarTaskModel;
 
 // Lớp Fragment để quản lý lịch và nhiệm vụ của người dùng
-public class AccountFragment extends Fragment {
+public class CalendarFragment extends Fragment {
     // Các hằng số và biến tĩnh
     private static final String ARG_PARAM1 = "param1"; // Tham số 1
     private static final String ARG_PARAM2 = "param2"; // Tham số 2
@@ -68,12 +68,12 @@ public class AccountFragment extends Fragment {
     private FirebaseAuth mAuth; // Đối tượng FirebaseAuth
 
     // Constructor mặc định
-    public AccountFragment() {
+    public CalendarFragment() {
     }
 
     // Factory method để tạo instance mới của Fragment với tham số
-    public static AccountFragment newInstance(String param1, String param2) {
-        AccountFragment fragment = new AccountFragment();
+    public static CalendarFragment newInstance(String param1, String param2) {
+        CalendarFragment fragment = new CalendarFragment();
         Bundle args = new Bundle();
         args.putString(ARG_PARAM1, param1);
         args.putString(ARG_PARAM2, param2);

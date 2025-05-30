@@ -43,7 +43,7 @@ public class MainTodoList extends AppCompatActivity {
             } else if (itemId == R.id.Task) {
                 selectedFragment = new TaskFragment();
             } else if (itemId == R.id.Alarm) {
-                selectedFragment = new AccountFragment();
+                selectedFragment = new CalendarFragment();
             }
 
             // Chỉ thay thế Fragment nếu Fragment được chọn không null và khác với Fragment hiện tại
