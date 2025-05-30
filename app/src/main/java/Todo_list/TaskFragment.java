@@ -36,34 +36,41 @@ import authentication.LoginScreen;
 import com.example.todo_app.R;
 
 public class TaskFragment extends Fragment {
-    private static final String ARG_PARAM1 = "param1"; // title
-    private static final String ARG_PARAM2 = "param2"; // taskId
-    private static final String KEY_CURRENT_TITLE = "current_title";
-    private static final String KEY_TASK_ID = "task_id";
-    private static final String KEY_SUBTASKS_REF_PATH = "subtasks_ref_path";
-    private static final int REQUEST_GOOGLE_PLAY_SERVICES = 1000;
+    // Hằng số dùng để lưu trữ tham số truyền vào Fragment
+    private static final String ARG_PARAM1 = "param1"; // Tiêu đề nhiệm vụ
+    private static final String ARG_PARAM2 = "param2"; // ID của nhiệm vụ
+    private static final String KEY_CURRENT_TITLE = "current_title"; // Key lưu tiêu đề trong trạng thái
+    private static final String KEY_TASK_ID = "task_id"; // Key lưu ID nhiệm vụ trong trạng thái
+    private static final String KEY_SUBTASKS_REF_PATH = "subtasks_ref_path"; // Key lưu đường dẫn subTasksRef
+    private static final int REQUEST_GOOGLE_PLAY_SERVICES = 1000; // Mã yêu cầu Google Play Services
 
-    private String taskId;
-    private String currentTitle;
+    // Biến lưu trữ thông tin nhiệm vụ hiện tại
+    private String taskId; // ID của nhiệm vụ hiện tại
+    private String currentTitle; // Tiêu đề nhiệm vụ hiện tại
 
-    private ArrayList<SubTaskModel> subTaskList;
-    private TaskAdapter adapter;
-    private ListView listView;
+    // Biến quản lý danh sách sub-task và giao diện
+    private ArrayList<SubTaskModel> subTaskList; // Danh sách các sub-task
+    private TaskAdapter adapter; // Adapter để hiển thị danh sách sub-task trong ListView
+    private ListView listView; // ListView hiển thị danh sách sub-task
 
-    private CollectionReference tasksRef;
-    private CollectionReference subTasksRef;
+    // Tham chiếu Firestore để lưu trữ và truy xuất dữ liệu
+    private CollectionReference tasksRef; // Tham chiếu đến collection "tasks" trong Firestore
+    private CollectionReference subTasksRef; // Tham chiếu đến collection "subTasks" trong Firestore
 
-    private FirebaseAuth mAuth;
-    private TaskModel currentTask;
+    // Biến quản lý xác thực và dữ liệu nhiệm vụ
+    private FirebaseAuth mAuth; // Đối tượng FirebaseAuth để quản lý xác thực người dùng
+    private TaskModel currentTask; // Mô hình dữ liệu của nhiệm vụ hiện tại
 
+    // Constructor rỗng cần thiết cho Fragment
     public TaskFragment() {
     }
 
+    // Tạo instance mới của TaskFragment với các tham số
     public static TaskFragment newInstance(String param1, String param2) {
         TaskFragment fragment = new TaskFragment();
         Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
+        args.putString(ARG_PARAM1, param1); // Lưu tiêu đề
+        args.putString(ARG_PARAM2, param2); // Lưu ID nhiệm vụ
         fragment.setArguments(args);
         return fragment;
     }
@@ -71,24 +78,28 @@ public class TaskFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setRetainInstance(true);
+        setRetainInstance(true); // Giữ instance của Fragment khi cấu hình thay đổi (ví dụ: xoay màn hình)
 
+        // Lấy tham số từ Bundle
         if (getArguments() != null) {
-            taskId = getArguments().getString(ARG_PARAM2, "");
-            currentTitle = getArguments().getString(ARG_PARAM1, "");
+            taskId = getArguments().getString(ARG_PARAM2, ""); // Lấy ID nhiệm vụ
+            currentTitle = getArguments().getString(ARG_PARAM1, ""); // Lấy tiêu đề nhiệm vụ
             Log.d("TaskFragment", "Received title from HomeFragment: " + currentTitle + ", taskId: " + taskId);
         } else {
-            Log.w("TaskFragment", "Arguments are null, checking lifecycle");
+            Log.w("TaskFragment", "Arguments are null, checking lifecycle"); // Ghi log nếu không có tham số
         }
 
+        // Kiểm tra Google Play Services
         GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
         int resultCode = googleApiAvailability.isGooglePlayServicesAvailable(requireContext());
         if (resultCode != ConnectionResult.SUCCESS) {
             Log.e("TaskFragment", "Google Play Services error: " + resultCode);
             if (isAdded()) {
                 if (googleApiAvailability.isUserResolvableError(resultCode)) {
+                    // Hiển thị dialog để người dùng khắc phục lỗi Google Play Services
                     googleApiAvailability.getErrorDialog(requireActivity(), resultCode, REQUEST_GOOGLE_PLAY_SERVICES).show();
                 } else {
+                    // Thiết bị không hỗ trợ Google Play Services, chuyển hướng về màn hình đăng nhập
                     Toast.makeText(requireContext(), "This device does not support Google Play Services", Toast.LENGTH_LONG).show();
                     startActivity(new Intent(requireContext(), LoginScreen.class));
                     requireActivity().finish();
@@ -97,38 +108,44 @@ public class TaskFragment extends Fragment {
             return;
         }
 
-        subTaskList = new ArrayList<>();
-        mAuth = FirebaseAuth.getInstance();
-        FirebaseUser currentUser = mAuth.getCurrentUser();
+        // Khởi tạo danh sách sub-task và Firebase
+        subTaskList = new ArrayList<>(); // Khởi tạo danh sách sub-task
+        mAuth = FirebaseAuth.getInstance(); // Khởi tạo FirebaseAuth
+        FirebaseUser currentUser = mAuth.getCurrentUser(); // Lấy thông tin người dùng hiện tại
         if (currentUser == null) {
+            // Không có người dùng đã đăng nhập, chuyển hướng về màn hình đăng nhập
             Log.e("TaskFragment", "No authenticated user found, redirecting to LoginScreen");
             startActivity(new Intent(requireContext(), LoginScreen.class));
             requireActivity().finish();
             return;
         }
 
+        // Khởi tạo Firestore và tham chiếu đến collection "tasks"
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         tasksRef = db.collection("users").document(currentUser.getUid()).collection("tasks");
 
+        // Khôi phục trạng thái từ savedInstanceState nếu có
         if (savedInstanceState != null) {
             String savedTaskId = savedInstanceState.getString(KEY_TASK_ID, "");
             String savedTitle = savedInstanceState.getString(KEY_CURRENT_TITLE, "");
-            if (!TextUtils.isEmpty(savedTaskId)) taskId = savedTaskId;
-            if (!TextUtils.isEmpty(savedTitle)) currentTitle = savedTitle;
+            if (!TextUtils.isEmpty(savedTaskId)) taskId = savedTaskId; // Khôi phục taskId
+            if (!TextUtils.isEmpty(savedTitle)) currentTitle = savedTitle; // Khôi phục tiêu đề
             String subTasksRefPath = savedInstanceState.getString(KEY_SUBTASKS_REF_PATH);
             if (subTasksRefPath != null) {
-                subTasksRef = db.collection(subTasksRefPath);
+                subTasksRef = db.collection(subTasksRefPath); // Khôi phục tham chiếu subTasksRef
             }
             Log.d("TaskFragment", "Restored from savedInstanceState: currentTitle=" + currentTitle + ", taskId=" + taskId);
         }
 
+        // Khởi tạo subTasksRef nếu taskId không rỗng
         if (!TextUtils.isEmpty(taskId)) {
             subTasksRef = tasksRef.document(taskId).collection("subTasks");
             Log.d("TaskFragment", "Initialized subTasksRef with taskId: " + taskId);
         } else {
-            Log.d("TaskFragment", "taskId is empty, this is a new task");
+            Log.d("TaskFragment", "taskId is empty, this is a new task"); // Ghi log nếu đây là nhiệm vụ mới
         }
 
+        // Khởi tạo adapter cho ListView
         adapter = new TaskAdapter(requireContext(), subTaskList, currentTitle, subTasksRef);
         Log.d("TaskFragment", "Initialized adapter in onCreate with subTasksRef: " + (subTasksRef != null ? "not null" : "null"));
     }
@@ -136,33 +153,39 @@ public class TaskFragment extends Fragment {
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putString(KEY_CURRENT_TITLE, currentTitle);
-        outState.putString(KEY_TASK_ID, taskId);
+        // Lưu trạng thái để khôi phục khi cần
+        outState.putString(KEY_CURRENT_TITLE, currentTitle); // Lưu tiêu đề
+        outState.putString(KEY_TASK_ID, taskId); // Lưu ID nhiệm vụ
         if (subTasksRef != null) {
-            outState.putString(KEY_SUBTASKS_REF_PATH, subTasksRef.getPath());
+            outState.putString(KEY_SUBTASKS_REF_PATH, subTasksRef.getPath()); // Lưu đường dẫn subTasksRef
         }
         Log.d("TaskFragment", "Saved state: currentTitle=" + currentTitle + ", taskId=" + taskId);
     }
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        // Tạo giao diện từ layout fragment_task
         View view = inflater.inflate(R.layout.fragment_task, container, false);
 
-        TextInputEditText taskInputTitle = view.findViewById(R.id.textFieldTitle);
-        ImageButton addButton = view.findViewById(R.id.btnAdd_Task);
-        Button saveButton = view.findViewById(R.id.button);
-        listView = view.findViewById(R.id.list_item_task);
-        TextView taskMainTitle = view.findViewById(R.id.task_main_title);
+        // Ánh xạ các thành phần giao diện
+        TextInputEditText taskInputTitle = view.findViewById(R.id.textFieldTitle); // Ô nhập tiêu đề
+        ImageButton addButton = view.findViewById(R.id.btnAdd_Task); // Nút thêm sub-task
+        Button saveButton = view.findViewById(R.id.button); // Nút lưu nhiệm vụ
+        listView = view.findViewById(R.id.list_item_task); // ListView hiển thị sub-task
+        TextView taskMainTitle = view.findViewById(R.id.task_main_title); // Tiêu đề chính
 
+        // Kiểm tra xem các thành phần giao diện có được tìm thấy không
         if (taskInputTitle == null || addButton == null || listView == null || saveButton == null || taskMainTitle == null) {
             Log.e("TaskFragment", "One or more views not found");
             return view;
         }
 
+        // Thiết lập adapter cho ListView
         adapter = new TaskAdapter(requireContext(), subTaskList, currentTitle, subTasksRef);
         listView.setAdapter(adapter);
         Log.d("TaskFragment", "Adapter initialized and set to ListView");
 
+        // Hiển thị tiêu đề nếu có
         if (!TextUtils.isEmpty(currentTitle)) {
             taskMainTitle.setText(currentTitle);
             taskMainTitle.setVisibility(View.VISIBLE);
@@ -173,13 +196,15 @@ public class TaskFragment extends Fragment {
             Log.d("TaskFragment", "currentTitle is empty in onCreateView");
         }
 
+        // Tải sub-task từ Firestore nếu có taskId
         if (subTasksRef != null && !TextUtils.isEmpty(taskId)) {
-            Log.d("TaskFragment", "Loading sub-tasks for taskId: " + taskId);
-            loadSubTasksFromFirestore();
+            Log.d("TaskFragment", "Loading sub-tasks for taskId: " + taskMainTitle);
+            loadSubTasksFromFirestore(); // Gọi phương thức tải sub-task
         } else {
             Log.d("TaskFragment", "subTasksRef or taskId is null/empty, skipping sub-task load");
         }
 
+        // Xử lý sự kiện nút thêm sub-task
         addButton.setOnClickListener(v -> {
             String title = taskInputTitle.getText() != null ? taskInputTitle.getText().toString().trim() : "";
             if (TextUtils.isEmpty(title)) {
@@ -192,9 +217,10 @@ public class TaskFragment extends Fragment {
             taskMainTitle.setVisibility(View.VISIBLE);
             taskInputTitle.setText(title);
 
-            addNewSubTask();
+            addNewSubTask(); // Thêm sub-task mới
         });
 
+        // Xử lý sự kiện nút lưu
         saveButton.setOnClickListener(v -> {
             String title = taskInputTitle.getText() != null ? taskInputTitle.getText().toString().trim() : "";
             if (TextUtils.isEmpty(title)) {
@@ -203,8 +229,9 @@ public class TaskFragment extends Fragment {
             }
 
             currentTitle = title;
-            currentTask = new TaskModel(title);
+            currentTask = new TaskModel(title); // Tạo đối tượng TaskModel với tiêu đề
 
+            // Lưu nhiệm vụ mới hoặc cập nhật nhiệm vụ hiện có
             if (TextUtils.isEmpty(taskId)) {
                 DocumentReference newTaskRef = tasksRef.document();
                 taskId = newTaskRef.getId();
@@ -212,7 +239,7 @@ public class TaskFragment extends Fragment {
                 newTaskRef.set(currentTask)
                         .addOnSuccessListener(aVoid -> {
                             Log.d("TaskFragment", "Task created with taskId: " + taskId);
-                            saveSubTasks();
+                            saveSubTasks(); // Lưu sub-task
                         })
                         .addOnFailureListener(e -> {
                             Log.e("TaskFragment", "Failed to create task: " + e.getMessage());
@@ -222,7 +249,12 @@ public class TaskFragment extends Fragment {
                 tasksRef.document(taskId).set(currentTask)
                         .addOnSuccessListener(aVoid -> {
                             Log.d("TaskFragment", "Task updated with taskId: " + taskId);
-                            saveSubTasks();
+                            saveSubTasks(); // Lưu sub-task
+                            // Chuyển về HomeFragment sau khi cập nhật thành công
+                            requireActivity().getSupportFragmentManager()
+                                    .beginTransaction()
+                                    .replace(R.id.frameLayout, new HomeFragment())
+                                    .commit();
                         })
                         .addOnFailureListener(e -> {
                             Log.e("TaskFragment", "Failed to update task: " + e.getMessage());
@@ -231,10 +263,11 @@ public class TaskFragment extends Fragment {
             }
         });
 
+        // Xử lý sự kiện nút quay lại
         ImageButton backButton = view.findViewById(R.id.btnBack);
         if (backButton != null) {
             backButton.setOnClickListener(v -> {
-                // Thay thế fragment hiện tại bằng HomeFragment
+                // Thay thế Fragment hiện tại bằng HomeFragment
                 requireActivity().getSupportFragmentManager()
                         .beginTransaction()
                         .replace(R.id.frameLayout, new HomeFragment())
@@ -254,16 +287,19 @@ public class TaskFragment extends Fragment {
         return view;
     }
 
+    // Thêm sub-task mới vào danh sách
     private void addNewSubTask() {
         if (subTaskList == null) {
-            subTaskList = new ArrayList<>();
+            subTaskList = new ArrayList<>(); // Khởi tạo danh sách nếu null
         }
+        // Tạo ID cho sub-task mới
         String subTaskId = subTasksRef != null ? subTasksRef.document().getId() : FirebaseFirestore.getInstance().collection("temp").document().getId();
-        SubTaskModel newSubTask = new SubTaskModel(subTaskId, "New Subtask", false);
+        SubTaskModel newSubTask = new SubTaskModel(subTaskId, "New Subtask", false); // Tạo sub-task mới
 
         subTaskList.add(newSubTask);
         Log.d("TaskFragment", "Sub-task added to list: id=" + subTaskId + ", content=" + newSubTask.getContent());
 
+        // Cập nhật giao diện
         if (adapter != null) {
             adapter.notifyDataSetChanged();
             if (listView != null) {
@@ -275,6 +311,7 @@ public class TaskFragment extends Fragment {
         }
     }
 
+    // Lưu danh sách sub-task vào Firestore
     private void saveSubTasks() {
         if (subTasksRef == null) {
             Log.e("TaskFragment", "subTasksRef is null");
@@ -282,6 +319,7 @@ public class TaskFragment extends Fragment {
             return;
         }
 
+        // Lưu từng sub-task vào Firestore
         for (SubTaskModel subTask : subTaskList) {
             if (!TextUtils.isEmpty(subTask.getContent()) && subTask.getId() != null) {
                 subTasksRef.document(subTask.getId()).set(subTask)
@@ -290,6 +328,7 @@ public class TaskFragment extends Fragment {
             }
         }
         Toast.makeText(requireContext(), "Tasks saved", Toast.LENGTH_SHORT).show();
+        // Chuyển về HomeFragment sau khi lưu
         requireActivity().getSupportFragmentManager().popBackStack();
         requireActivity().getSupportFragmentManager()
                 .beginTransaction()
@@ -297,6 +336,7 @@ public class TaskFragment extends Fragment {
                 .commit();
     }
 
+    // Tải danh sách sub-task từ Firestore
     private void loadSubTasksFromFirestore() {
         if (subTasksRef == null || TextUtils.isEmpty(taskId)) {
             Log.e("TaskFragment", "subTasksRef or taskId is null/empty, cannot load sub-tasks. taskId: " + taskId);
@@ -308,6 +348,7 @@ public class TaskFragment extends Fragment {
             return;
         }
 
+        // Kiểm tra sự tồn tại của nhiệm vụ
         tasksRef.document(taskId).get().addOnSuccessListener(documentSnapshot -> {
             if (!documentSnapshot.exists()) {
                 Log.e("TaskFragment", "Task does not exist in Firestore: " + taskId);
@@ -319,6 +360,7 @@ public class TaskFragment extends Fragment {
                 return;
             }
 
+            // C update title nếu chưa có
             if (TextUtils.isEmpty(currentTitle)) {
                 currentTitle = documentSnapshot.getString("title");
                 if (!TextUtils.isEmpty(currentTitle) && isAdded()) {
@@ -335,13 +377,14 @@ public class TaskFragment extends Fragment {
                 }
             }
 
+            // Tải danh sách sub-task
             subTasksRef.get().addOnSuccessListener(querySnapshot -> {
                 if (!isAdded()) {
                     Log.w("TaskFragment", "Fragment not attached, skipping UI update");
                     return;
                 }
                 requireActivity().runOnUiThread(() -> {
-                    subTaskList.clear();
+                    subTaskList.clear(); // Xóa danh sách sub-task hiện tại
                     Log.d("TaskFragment", "Cleared subTaskList, loading new data for taskId: " + taskId);
                     if (querySnapshot.isEmpty()) {
                         Log.d("TaskFragment", "No sub-tasks found in Firestore for taskId: " + taskId);
@@ -350,14 +393,14 @@ public class TaskFragment extends Fragment {
                         for (QueryDocumentSnapshot document : querySnapshot) {
                             SubTaskModel subTask = document.toObject(SubTaskModel.class);
                             subTask.setId(document.getId());
-                            subTaskList.add(subTask);
+                            subTaskList.add(subTask); // Thêm sub-task vào danh sách
                             Log.d("TaskFragment", "Loaded sub-task: id=" + subTask.getId() + ", content=" + subTask.getContent());
                         }
                     }
                     if (adapter != null) {
-                        adapter.notifyDataSetChanged();
+                        adapter.notifyDataSetChanged(); // Thông báo adapter cập nhật dữ liệu
                         if (listView != null) {
-                            listView.invalidateViews();
+                            listView.invalidateViews(); // Làm mới ListView
                             Log.d("TaskFragment", "Adapter notified, subTaskList size: " + subTaskList.size());
                         } else {
                             Log.e("TaskFragment", "ListView is null when updating sub-tasks");
@@ -384,19 +427,24 @@ public class TaskFragment extends Fragment {
         });
     }
 
-//    @Override
-//    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-//        super.onActivityResult(requestCode, resultCode, data);
-//        if (requestCode == REQUEST_GOOGLE_PLAY_SERVICES) {
-//            if (resultCode == RESULT_OK) {
-//                Log.d("TaskFragment", "Google Play Services resolved, retrying initialization");
-//                requireActivity().recreate();
-//            } else {
-//                Log.e("TaskFragment", "User cancelled Google Play Services resolution");
-//                Toast.makeText(requireContext(), "Google Play Services is required for this app", Toast.LENGTH_LONG).show();
-//                startActivity(new Intent(requireContext(), LoginScreen.class));
-//                requireActivity().finish();
-//            }
-//        }
-//    }
+    // Phương thức xử lý kết quả từ Google Play Services (hiện bị comment)
+    /*
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_GOOGLE_PLAY_SERVICES) {
+            if (resultCode == RESULT_OK) {
+                // Google Play Services đã được khắc phục, thử khởi tạo lại
+                Log.d("TaskFragment", "Google Play Services resolved, retrying initialization");
+                requireActivity().recreate();
+            } else {
+                // Người dùng hủy khắc phục Google Play Services
+                Log.e("TaskFragment", "User cancelled Google Play Services resolution");
+                Toast.makeText(requireContext(), "Google Play Services is required for this app", Toast.LENGTH_LONG).show();
+                startActivity(new Intent(requireContext(), LoginScreen.class));
+                requireActivity().finish();
+            }
+        }
+    }
+    */
 }

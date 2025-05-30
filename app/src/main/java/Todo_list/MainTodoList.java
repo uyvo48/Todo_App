@@ -72,17 +72,17 @@ public class MainTodoList extends AppCompatActivity {
     }
 
     // Xử lý sự kiện nhấn nút Back
-    @Override
-    public void onBackPressed() {
-        Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.frameLayout);
-        if (currentFragment instanceof TaskFragment) {
-            // Nếu đang ở TaskFragment, quay lại Fragment trước đó và chọn mục Home
-            Log.d("MainTodoList", "Handling back press in TaskFragment");
-            getSupportFragmentManager().popBackStack();
-            updateNavigationSelection(R.id.Home);
-        } else {
-            // Xử lý mặc định của nút Back
-            super.onBackPressed();
-        }
-    }
+//    @Override
+//    public void onBackPressed() {
+//        Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.frameLayout);
+//        if (currentFragment instanceof TaskFragment) {
+//            // Nếu đang ở TaskFragment, quay lại Fragment trước đó và chọn mục Home
+//            Log.d("MainTodoList", "Handling back press in TaskFragment");
+//            getSupportFragmentManager().popBackStack();
+//            updateNavigationSelection(R.id.Home);
+//        } else {
+//            // Xử lý mặc định của nút Back
+//            super.onBackPressed();
+//        }
+//    }
 }
