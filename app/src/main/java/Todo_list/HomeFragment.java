@@ -105,7 +105,7 @@ public class HomeFragment extends Fragment {
             Log.d("HomeFragment", "User signed out");
             Toast.makeText(requireContext(), "Đã đăng xuất", Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(requireContext(), LoginScreen.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK); // Xóa stack hoạt động
+//            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK); // Xóa stack hoạt động
             startActivity(intent);
 //            requireActivity().finish(); // Kết thúc Activity hiện tại
         });

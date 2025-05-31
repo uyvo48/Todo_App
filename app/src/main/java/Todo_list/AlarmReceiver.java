@@ -48,7 +48,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         // Tạo thông báo sử dụng NotificationCompat
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_alarm) // Biểu tượng thông báo
-                .setContentTitle("Nhắc nhở: " + title) // Tiêu đề thông báo
+                .setContentTitle("Nhắc nhở task: " + title) // Tiêu đề thông báo
                 .setContentText("Đã đến giờ thực hiện task!") // Nội dung thông báo
                 .setPriority(NotificationCompat.PRIORITY_HIGH) // Độ ưu tiên cao
                 .setAutoCancel(true); // Tự động hủy khi nhấn vào thông báo

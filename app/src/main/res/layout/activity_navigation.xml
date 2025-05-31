@@ -49,6 +49,8 @@
         android:padding="24dp"
         android:text="Continue"
         android:textSize="18sp"
+
+        app:cornerRadius="8dp"
         android:backgroundTint="@color/ColorText"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"

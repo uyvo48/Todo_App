@@ -163,6 +163,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:backgroundTint="@color/ColorText"
+            app:cornerRadius="8dp"
+            android:textSize="24dp"
             android:text="Register"
          />
 
