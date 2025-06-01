@@ -141,10 +141,11 @@ public class CalendarFragment extends Fragment {
                         if (errorMsg.contains("network") && authRetryCount < MAX_AUTH_RETRIES) {
                             // Thử lại sau 2 giây nếu lỗi mạng
                             new Handler(Looper.getMainLooper()).postDelayed(this::attemptAnonymousSignIn, 2000);
-                        } else {
-                            Toast.makeText(requireContext(), "Lỗi xác thực: " + errorMsg, Toast.LENGTH_SHORT).show();
-                            filterTasksByDate();
                         }
+//                        else {
+//                            Toast.makeText(requireContext(), "Lỗi xác thực: " + errorMsg, Toast.LENGTH_SHORT).show();
+//                            filterTasksByDate();
+//                        }
                     }
                 });
     }

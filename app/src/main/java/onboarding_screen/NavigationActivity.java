@@ -96,6 +96,6 @@ public class NavigationActivity extends AppCompatActivity {
             dots[i].setPadding(8, 0, 8, 0);
             dotIndicator.addView(dots[i]);
         }
-        dots[position].setTextColor(getResources().getColor(R.color.white, getApplicationContext().getTheme()));
+        dots[position].setTextColor(getResources().getColor(R.color.secondary, getApplicationContext().getTheme()));
     }
 }
