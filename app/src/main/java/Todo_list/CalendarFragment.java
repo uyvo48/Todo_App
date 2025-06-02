@@ -225,9 +225,9 @@ public class CalendarFragment extends Fragment {
                 // Xóa back stack
                 requireActivity().getSupportFragmentManager().popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE);
                 // Cập nhật BottomNavigationView
-                if (requireActivity() instanceof MainTodoList) {
-                    ((MainTodoList) requireActivity()).updateNavigationSelection(R.id.Home);
-                }
+//                if (requireActivity() instanceof MainTodoList) {
+//                    ((MainTodoList) requireActivity()).updateNavigationSelection(R.id.Home);
+//                }
                 Log.d("TaskFragment", "Back button pressed, navigated to HomeFragment");
             });
         } else {

@@ -33,6 +33,7 @@ import Adapter.TaskAdapter;
 import model.SubTaskModel;
 import model.TaskModel;
 import authentication.LoginScreen;
+
 import com.example.todo_app.R;
 
 public class TaskFragment extends Fragment {
@@ -60,6 +61,8 @@ public class TaskFragment extends Fragment {
     // Biến quản lý xác thực và dữ liệu nhiệm vụ
     private FirebaseAuth mAuth; // Đối tượng FirebaseAuth để quản lý xác thực người dùng
     private TaskModel currentTask; // Mô hình dữ liệu của nhiệm vụ hiện tại
+
+    private OnTaskCreatedListener taskCreatedListener;
 
     // Constructor rỗng cần thiết cho Fragment
     public TaskFragment() {
@@ -236,30 +239,23 @@ public class TaskFragment extends Fragment {
                 DocumentReference newTaskRef = tasksRef.document();
                 taskId = newTaskRef.getId();
                 subTasksRef = tasksRef.document(taskId).collection("subTasks");
-                newTaskRef.set(currentTask)
-                        .addOnSuccessListener(aVoid -> {
-                            Log.d("TaskFragment", "Task created with taskId: " + taskId);
-                            saveSubTasks(); // Lưu sub-task
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.e("TaskFragment", "Failed to create task: " + e.getMessage());
-                            Toast.makeText(requireContext(), "Failed to create task", Toast.LENGTH_SHORT).show();
-                        });
+                newTaskRef.set(currentTask).addOnSuccessListener(aVoid -> {
+                    Log.d("TaskFragment", "Task created with taskId: " + taskId);
+                    saveSubTasks(); // Lưu sub-task
+                }).addOnFailureListener(e -> {
+                    Log.e("TaskFragment", "Failed to create task: " + e.getMessage());
+                    Toast.makeText(requireContext(), "Failed to create task", Toast.LENGTH_SHORT).show();
+                });
             } else {
-                tasksRef.document(taskId).set(currentTask)
-                        .addOnSuccessListener(aVoid -> {
-                            Log.d("TaskFragment", "Task updated with taskId: " + taskId);
-                            saveSubTasks(); // Lưu sub-task
-                            // Chuyển về HomeFragment sau khi cập nhật thành công
-                            requireActivity().getSupportFragmentManager()
-                                    .beginTransaction()
-                                    .replace(R.id.frameLayout, new HomeFragment())
-                                    .commit();
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.e("TaskFragment", "Failed to update task: " + e.getMessage());
-                            Toast.makeText(requireContext(), "Failed to update task", Toast.LENGTH_SHORT).show();
-                        });
+                tasksRef.document(taskId).set(currentTask).addOnSuccessListener(aVoid -> {
+                    Log.d("TaskFragment", "Task updated with taskId: " + taskId);
+                    saveSubTasks(); // Lưu sub-task
+                    // Chuyển về HomeFragment sau khi cập nhật thành công
+                    requireActivity().getSupportFragmentManager().beginTransaction().replace(R.id.frameLayout, new HomeFragment()).commit();
+                }).addOnFailureListener(e -> {
+                    Log.e("TaskFragment", "Failed to update task: " + e.getMessage());
+                    Toast.makeText(requireContext(), "Failed to update task", Toast.LENGTH_SHORT).show();
+                });
             }
         });
 
@@ -268,16 +264,13 @@ public class TaskFragment extends Fragment {
         if (backButton != null) {
             backButton.setOnClickListener(v -> {
                 // Thay thế Fragment hiện tại bằng HomeFragment
-                requireActivity().getSupportFragmentManager()
-                        .beginTransaction()
-                        .replace(R.id.frameLayout, new HomeFragment())
-                        .commit();
+                requireActivity().getSupportFragmentManager().beginTransaction().replace(R.id.frameLayout, new HomeFragment()).commit();
                 // Xóa toàn bộ back stack để đảm bảo trạng thái sạch
                 requireActivity().getSupportFragmentManager().popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE);
-                // Cập nhật BottomNavigationView để chọn mục "Home"
-                if (requireActivity() instanceof MainTodoList) {
-                    ((MainTodoList) requireActivity()).updateNavigationSelection(R.id.Home);
-                }
+//                // Cập nhật BottomNavigationView để chọn mục "Home"
+//                if (requireActivity() instanceof MainTodoList) {
+//                    ((MainTodoList) requireActivity()).updateNavigationSelection(R.id.Home);
+//                }
                 Log.d("TaskFragment", "Back button pressed, navigated to HomeFragment");
             });
         } else {
@@ -322,18 +315,18 @@ public class TaskFragment extends Fragment {
         // Lưu từng sub-task vào Firestore
         for (SubTaskModel subTask : subTaskList) {
             if (!TextUtils.isEmpty(subTask.getContent()) && subTask.getId() != null) {
-                subTasksRef.document(subTask.getId()).set(subTask)
-                        .addOnSuccessListener(aVoid -> Log.d("TaskFragment", "Sub-task saved: " + subTask.getId()))
-                        .addOnFailureListener(e -> Log.e("TaskFragment", "Failed to save sub-task: " + e.getMessage()));
+                subTasksRef.document(subTask.getId()).set(subTask).addOnSuccessListener(aVoid -> Log.d("TaskFragment", "Sub-task saved: " + subTask.getId())).addOnFailureListener(e -> Log.e("TaskFragment", "Failed to save sub-task: " + e.getMessage()));
             }
         }
         Toast.makeText(requireContext(), "Tasks saved", Toast.LENGTH_SHORT).show();
+
         // Chuyển về HomeFragment sau khi lưu
         requireActivity().getSupportFragmentManager().popBackStack();
-        requireActivity().getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.frameLayout, new HomeFragment())
-                .commit();
+        requireActivity().getSupportFragmentManager().beginTransaction().replace(R.id.frameLayout, new HomeFragment()).commit();
+
+        if (taskCreatedListener != null) {
+            taskCreatedListener.onTaskCreatedSuccessfully();
+        }
     }
 
     // Tải danh sách sub-task từ Firestore
@@ -341,9 +334,7 @@ public class TaskFragment extends Fragment {
         if (subTasksRef == null || TextUtils.isEmpty(taskId)) {
             Log.e("TaskFragment", "subTasksRef or taskId is null/empty, cannot load sub-tasks. taskId: " + taskId);
             if (isAdded()) {
-                requireActivity().runOnUiThread(() ->
-                        Toast.makeText(requireContext(), "Cannot load sub-tasks: Invalid task ID", Toast.LENGTH_SHORT).show()
-                );
+                requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Cannot load sub-tasks: Invalid task ID", Toast.LENGTH_SHORT).show());
             }
             return;
         }
@@ -353,9 +344,7 @@ public class TaskFragment extends Fragment {
             if (!documentSnapshot.exists()) {
                 Log.e("TaskFragment", "Task does not exist in Firestore: " + taskId);
                 if (isAdded()) {
-                    requireActivity().runOnUiThread(() ->
-                            Toast.makeText(requireContext(), "Task does not exist", Toast.LENGTH_SHORT).show()
-                    );
+                    requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Task does not exist", Toast.LENGTH_SHORT).show());
                 }
                 return;
             }
@@ -411,20 +400,20 @@ public class TaskFragment extends Fragment {
                 });
             }).addOnFailureListener(e -> {
                 if (isAdded()) {
-                    requireActivity().runOnUiThread(() ->
-                            Toast.makeText(requireContext(), "Failed to load sub-tasks: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                    );
+                    requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Failed to load sub-tasks: " + e.getMessage(), Toast.LENGTH_SHORT).show());
                 }
                 Log.e("TaskFragment", "Failed to load sub-tasks for taskId: " + taskId + ", error: " + e.getMessage());
             });
         }).addOnFailureListener(e -> {
             if (isAdded()) {
-                requireActivity().runOnUiThread(() ->
-                        Toast.makeText(requireContext(), "Failed to load task: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                );
+                requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Failed to load task: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
             Log.e("TaskFragment", "Failed to check task existence for taskId: " + taskId + ", error: " + e.getMessage());
         });
+    }
+
+    public void setOnTaskCreatedListener(OnTaskCreatedListener listener) {
+        this.taskCreatedListener = listener;
     }
 
     // Phương thức xử lý kết quả từ Google Play Services (hiện bị comment)
