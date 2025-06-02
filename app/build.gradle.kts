@@ -53,7 +53,7 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-firestore") // Thay thế libs.firebase.firestore
     implementation("com.google.firebase:firebase-auth")
-
+//    implementation ("com.google.android.gms:play-services:17.0.0")
     implementation ("com.google.android.material:material:1.9.0")
     // Các phụ thuộc khác
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
